@@ -121,14 +121,19 @@ const Index = () => {
     return () => cancelAnimationFrame(rafRef.current);
   }, [drawPhase]);
 
-  // Load TikTok embed
+  // Load TikTok + Tenor embed scripts
   useEffect(() => {
     if (drawPhase === "opened") {
       setTimeout(() => {
-        const script = document.createElement("script");
-        script.src = "https://www.tiktok.com/embed.js";
-        script.async = true;
-        document.body.appendChild(script);
+        const tiktok = document.createElement("script");
+        tiktok.src = "https://www.tiktok.com/embed.js";
+        tiktok.async = true;
+        document.body.appendChild(tiktok);
+
+        const tenor = document.createElement("script");
+        tenor.src = "https://tenor.com/embed.js";
+        tenor.async = true;
+        document.body.appendChild(tenor);
       }, 1000);
     }
   }, [drawPhase]);
