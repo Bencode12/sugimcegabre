@@ -109,7 +109,7 @@ const Index = () => {
         angle += 3;
         setFlapAngle(Math.min(angle, 180));
       }
-      if (angle > 60 && py < ENVELOPE_H + 60) {
+      if (angle > 60 && py < ENVELOPE_H + 120) {
         py += 2;
         setPaperY(py);
       }
@@ -143,18 +143,17 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-start pt-12 px-4">
       {/* Envelope area */}
-      <div className="relative" style={{ width: canvasW, height: canvasH + (drawPhase === "opened" ? paperY + 200 : 0) }}>
-        {/* Paper coming out */}
+      <div className="relative" style={{ width: canvasW, height: canvasH + (drawPhase === "opened" ? 300 : 0) }}>
+        {/* Paper coming out - rises ABOVE the envelope */}
         {drawPhase === "opened" && paperY > 0 && (
           <div
             className="absolute left-1/2 bg-background border-2 border-foreground flex flex-col items-center"
             style={{
               width: ENVELOPE_W - 20,
               transform: `translateX(-50%)`,
-              top: oy + ENVELOPE_H - paperY,
-              minHeight: paperY,
+              top: oy - paperY + FLAP_H,
               padding: "16px 8px",
-              zIndex: 1,
+              zIndex: 10,
             }}
           >
             {paperY > 100 && (
