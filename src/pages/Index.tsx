@@ -109,7 +109,7 @@ const Index = () => {
         angle += 3;
         setFlapAngle(Math.min(angle, 180));
       }
-      if (angle > 60 && py < ENVELOPE_H + 60) {
+      if (angle > 60 && py < ENVELOPE_H + 120) {
         py += 2;
         setPaperY(py);
       }
