@@ -1,190 +1,260 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+
+const ENVELOPE_W = 300;
+const ENVELOPE_H = 200;
+const FLAP_H = 100;
+const DRAW_SPEED = 4; // pixels per frame
+
+type Point = [number, number];
+
+function lerp(a: Point, b: Point, t: number): Point {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+}
+
+function pathLength(points: Point[]): number {
+  let len = 0;
+  for (let i = 1; i < points.length; i++) {
+    const dx = points[i][0] - points[i - 1][0];
+    const dy = points[i][1] - points[i - 1][1];
+    len += Math.sqrt(dx * dx + dy * dy);
+  }
+  return len;
+}
+
+function getDrawnPath(points: Point[], drawnLength: number): Point[] {
+  const result: Point[] = [points[0]];
+  let remaining = drawnLength;
+  for (let i = 1; i < points.length; i++) {
+    const dx = points[i][0] - points[i - 1][0];
+    const dy = points[i][1] - points[i - 1][1];
+    const segLen = Math.sqrt(dx * dx + dy * dy);
+    if (remaining >= segLen) {
+      result.push(points[i]);
+      remaining -= segLen;
+    } else {
+      const t = remaining / segLen;
+      result.push(lerp(points[i - 1], points[i], t));
+      break;
+    }
+  }
+  return result;
+}
+
+function pointsToSvgPath(points: Point[]): string {
+  if (points.length === 0) return "";
+  return points.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(" ");
+}
 
 const Index = () => {
-  const [phase, setPhase] = useState(0);
-  const [typedText, setTypedText] = useState("");
-  const fullText = ">>> opening_envelope.py";
-  const birthdayText = "Su gimtadieniu!";
-  const [birthdayTyped, setBirthdayTyped] = useState("");
-  const [envelopeFrame, setEnvelopeFrame] = useState(0);
+  const [drawPhase, setDrawPhase] = useState<"drawing" | "done" | "opened">("drawing");
+  const [drawnLength, setDrawnLength] = useState(0);
+  const [paperY, setPaperY] = useState(0);
+  const [flapAngle, setFlapAngle] = useState(0);
+  const rafRef = useRef<number>(0);
 
-  const envelopeFrames = [
-    `
-  ___________
- /           \\
-/_____________\\
-|             |
-|   CLOSED    |
-|_____________|`,
-    `
-  ____/\\____
- /    \\/    \\
-/____________\\
-|             |
-|             |
-|_____________|`,
-    `
-  ___/    \\___
- /            \\
-/              \\
-|              |
-|    <3  <3    |
-|______________|`,
-    `
-  __/        \\__
- /              \\
-|    OPEN!!!     |
-|                |
-|   ♥  ♥  ♥     |
-|________________|`,
+  // Envelope shape paths (relative to center of canvas)
+  const ox = 50;
+  const oy = 80;
+
+  // Body rectangle
+  const body: Point[] = [
+    [ox, oy],
+    [ox + ENVELOPE_W, oy],
+    [ox + ENVELOPE_W, oy + ENVELOPE_H],
+    [ox, oy + ENVELOPE_H],
+    [ox, oy],
   ];
 
-  // Phase 0: typewriter for command
-  useEffect(() => {
-    if (phase === 0) {
-      let i = 0;
-      const interval = setInterval(() => {
-        setTypedText(fullText.slice(0, i + 1));
-        i++;
-        if (i >= fullText.length) {
-          clearInterval(interval);
-          setTimeout(() => setPhase(1), 800);
-        }
-      }, 80);
-      return () => clearInterval(interval);
-    }
-  }, [phase]);
+  // Flap (triangle on top)
+  const flap: Point[] = [
+    [ox, oy],
+    [ox + ENVELOPE_W / 2, oy + FLAP_H],
+    [ox + ENVELOPE_W, oy],
+  ];
 
-  // Phase 1: envelope animation frames
-  useEffect(() => {
-    if (phase === 1) {
-      let frame = 0;
-      const interval = setInterval(() => {
-        frame++;
-        setEnvelopeFrame(frame);
-        if (frame >= envelopeFrames.length - 1) {
-          clearInterval(interval);
-          setTimeout(() => setPhase(2), 1000);
-        }
-      }, 800);
-      return () => clearInterval(interval);
-    }
-  }, [phase]);
+  // All segments to draw in order
+  const allPaths = [...body, ...flap];
+  const totalLength = pathLength(allPaths);
 
-  // Phase 2: show content, type birthday text
+  // Drawing animation
   useEffect(() => {
-    if (phase === 2) {
-      let i = 0;
-      const interval = setInterval(() => {
-        setBirthdayTyped(birthdayText.slice(0, i + 1));
-        i++;
-        if (i >= birthdayText.length) {
-          clearInterval(interval);
-          setTimeout(() => setPhase(3), 500);
-        }
-      }, 100);
-      return () => clearInterval(interval);
-    }
-  }, [phase]);
+    if (drawPhase !== "drawing") return;
+    let len = 0;
+    const animate = () => {
+      len += DRAW_SPEED;
+      setDrawnLength(len);
+      if (len < totalLength) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        setDrawPhase("done");
+      }
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [drawPhase, totalLength]);
 
-  // Phase 3: load tiktok
+  // Handle flap click - animate opening
+  const handleFlapClick = () => {
+    if (drawPhase !== "done") return;
+    setDrawPhase("opened");
+  };
+
+  // Animate flap opening and paper rising
   useEffect(() => {
-    if (phase === 3) {
-      const script = document.createElement("script");
-      script.src = "https://www.tiktok.com/embed.js";
-      script.async = true;
-      document.body.appendChild(script);
+    if (drawPhase !== "opened") return;
+    let angle = 0;
+    let py = 0;
+    const animate = () => {
+      if (angle < 180) {
+        angle += 3;
+        setFlapAngle(Math.min(angle, 180));
+      }
+      if (angle > 60 && py < ENVELOPE_H + 60) {
+        py += 2;
+        setPaperY(py);
+      }
+      if (angle < 180 || py < ENVELOPE_H + 60) {
+        rafRef.current = requestAnimationFrame(animate);
+      }
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [drawPhase]);
+
+  // Load TikTok embed
+  useEffect(() => {
+    if (drawPhase === "opened") {
+      setTimeout(() => {
+        const script = document.createElement("script");
+        script.src = "https://www.tiktok.com/embed.js";
+        script.async = true;
+        document.body.appendChild(script);
+      }, 1000);
     }
-  }, [phase]);
+  }, [drawPhase]);
+
+  const bodyLen = pathLength(body);
+  const drawnBody = getDrawnPath(body, Math.min(drawnLength, bodyLen));
+  const flapDrawn = drawnLength > bodyLen ? getDrawnPath(flap, drawnLength - bodyLen) : [];
+
+  const canvasW = ENVELOPE_W + 100;
+  const canvasH = ENVELOPE_H + FLAP_H + 100;
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8 font-mono">
-      <div className="max-w-2xl mx-auto">
-        {/* Terminal header */}
-        <div className="text-muted-foreground text-sm mb-2">
-          birthday_surprise.py v1.0
-        </div>
-        <div className="border border-border p-1 mb-4">
-          <div className="flex gap-2 text-xs text-muted-foreground mb-2">
-            <span>[=]</span>
-            <span>[□]</span>
-            <span>[x]</span>
-          </div>
-          <hr className="border-border" />
-        </div>
-
-        {/* Typewriter command */}
-        <div className="text-foreground mb-4">
-          <span>{typedText}</span>
-          {phase === 0 && <span className="cursor-blink" />}
-        </div>
-
-        {/* Envelope ASCII animation */}
-        {phase >= 1 && (
-          <pre className="text-foreground text-sm md:text-base mb-6 leading-tight">
-            {envelopeFrames[envelopeFrame]}
-          </pre>
-        )}
-
-        {phase >= 1 && envelopeFrame >= envelopeFrames.length - 1 && (
-          <div className="text-muted-foreground text-sm mb-4">
-            &gt;&gt;&gt; envelope opened successfully!
-          </div>
-        )}
-
-        {/* Content after envelope */}
-        {phase >= 2 && (
-          <div className="flex flex-col items-center gap-6 mt-8">
-            <div className="text-muted-foreground text-sm">
-              &gt;&gt;&gt; loading cat_kiss.gif ...
-            </div>
-            <div className="ascii-border p-2">
-              <img
-                src="https://media.tenor.com/5TgGNNYp9dkAAAAM/cat-kiss.gif"
-                alt="Cat kiss"
-                className="w-56 h-auto"
-                style={{ imageRendering: "auto" }}
-              />
-            </div>
-
-            <div className="text-center mt-4">
-              <div className="text-muted-foreground text-sm mb-2">
-                &gt;&gt;&gt; print(message)
-              </div>
-              <h1 className="text-3xl md:text-5xl text-accent font-bold">
-                {birthdayTyped}
-                {phase === 2 && <span className="cursor-blink" />}
-              </h1>
-            </div>
-
-            {phase >= 3 && (
-              <div className="mt-6 w-full flex flex-col items-center">
-                <div className="text-muted-foreground text-sm mb-2">
-                  &gt;&gt;&gt; loading tiktok_embed() ...
-                </div>
-                <blockquote
-                  className="tiktok-embed"
-                  cite="https://www.tiktok.com/@tovstasraka/video/7596449873893920011"
-                  data-video-id="7596449873893920011"
-                  style={{ maxWidth: "605px", minWidth: "325px" }}
-                >
-                  <section />
-                </blockquote>
-              </div>
+    <div className="min-h-screen bg-background flex flex-col items-center justify-start pt-12 px-4">
+      {/* Envelope area */}
+      <div className="relative" style={{ width: canvasW, height: canvasH + (drawPhase === "opened" ? paperY + 200 : 0) }}>
+        {/* Paper coming out */}
+        {drawPhase === "opened" && paperY > 0 && (
+          <div
+            className="absolute left-1/2 bg-background border-2 border-foreground flex flex-col items-center"
+            style={{
+              width: ENVELOPE_W - 20,
+              transform: `translateX(-50%)`,
+              top: oy + ENVELOPE_H - paperY,
+              minHeight: paperY,
+              padding: "16px 8px",
+              zIndex: 1,
+            }}
+          >
+            {paperY > 100 && (
+              <>
+                <img
+                  src="https://media.tenor.com/5TgGNNYp9dkAAAAM/cat-kiss.gif"
+                  alt="Cat kiss"
+                  className="w-40 h-auto mb-4"
+                />
+                <p className="text-foreground text-xl font-bold text-center">
+                  Su gimtadieniu!
+                </p>
+              </>
             )}
-
-            <div className="text-foreground text-sm mt-8">
-              &gt;&gt;&gt; print("🎂 🎈 🎁 🎉 ✨")
-              <br />
-              🎂 🎈 🎁 🎉 ✨
-            </div>
-
-            <div className="text-muted-foreground text-xs mt-4">
-              Process finished with exit code 0 (birthday_success)
-            </div>
           </div>
         )}
+
+        {/* SVG envelope */}
+        <svg
+          width={canvasW}
+          height={canvasH}
+          className="relative"
+          style={{ zIndex: 2 }}
+        >
+          {/* Drawn body */}
+          <path
+            d={pointsToSvgPath(drawnBody)}
+            fill="none"
+            stroke="black"
+            strokeWidth="2"
+          />
+
+          {/* Filled body background (after drawing done) */}
+          {drawPhase !== "drawing" && (
+            <rect
+              x={ox}
+              y={oy}
+              width={ENVELOPE_W}
+              height={ENVELOPE_H}
+              fill="white"
+              stroke="black"
+              strokeWidth="2"
+            />
+          )}
+
+          {/* Drawn flap */}
+          {drawPhase === "drawing" && flapDrawn.length > 0 && (
+            <path
+              d={pointsToSvgPath(flapDrawn)}
+              fill="none"
+              stroke="black"
+              strokeWidth="2"
+            />
+          )}
+
+          {/* Interactive flap (after drawing) */}
+          {drawPhase !== "drawing" && (
+            <g
+              style={{
+                transformOrigin: `${ox + ENVELOPE_W / 2}px ${oy}px`,
+                transform: `rotateX(${flapAngle}deg)`,
+                cursor: drawPhase === "done" ? "pointer" : "default",
+              }}
+              onClick={handleFlapClick}
+            >
+              <polygon
+                points={`${ox},${oy} ${ox + ENVELOPE_W / 2},${oy + FLAP_H} ${ox + ENVELOPE_W},${oy}`}
+                fill="white"
+                stroke="black"
+                strokeWidth="2"
+              />
+              {drawPhase === "done" && (
+                <text
+                  x={ox + ENVELOPE_W / 2}
+                  y={oy + FLAP_H / 2 + 5}
+                  textAnchor="middle"
+                  fontSize="14"
+                  fill="black"
+                >
+                  click me!
+                </text>
+              )}
+            </g>
+          )}
+        </svg>
       </div>
+
+      {/* TikTok embed below */}
+      {drawPhase === "opened" && paperY > 100 && (
+        <div className="mt-8 mb-12 flex justify-center w-full">
+          <blockquote
+            className="tiktok-embed"
+            cite="https://www.tiktok.com/@tovstasraka/video/7596449873893920011"
+            data-video-id="7596449873893920011"
+            style={{ maxWidth: "605px", minWidth: "325px" }}
+          >
+            <section />
+          </blockquote>
+        </div>
+      )}
     </div>
   );
 };
