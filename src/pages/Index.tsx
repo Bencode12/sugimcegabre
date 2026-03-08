@@ -121,14 +121,19 @@ const Index = () => {
     return () => cancelAnimationFrame(rafRef.current);
   }, [drawPhase]);
 
-  // Load TikTok embed
+  // Load TikTok + Tenor embed scripts
   useEffect(() => {
     if (drawPhase === "opened") {
       setTimeout(() => {
-        const script = document.createElement("script");
-        script.src = "https://www.tiktok.com/embed.js";
-        script.async = true;
-        document.body.appendChild(script);
+        const tiktok = document.createElement("script");
+        tiktok.src = "https://www.tiktok.com/embed.js";
+        tiktok.async = true;
+        document.body.appendChild(tiktok);
+
+        const tenor = document.createElement("script");
+        tenor.src = "https://tenor.com/embed.js";
+        tenor.async = true;
+        document.body.appendChild(tenor);
       }, 1000);
     }
   }, [drawPhase]);
@@ -141,7 +146,7 @@ const Index = () => {
   const canvasH = ENVELOPE_H + FLAP_H + 100;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-start pt-12 px-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-start pt-48 px-4">
       {/* Envelope area */}
       <div className="relative" style={{ width: canvasW, height: canvasH + (drawPhase === "opened" ? 300 : 0) }}>
         {/* Paper coming out - rises ABOVE the envelope */}
@@ -158,10 +163,11 @@ const Index = () => {
           >
             {paperY > 100 && (
               <>
-                <img
-                  src="https://media.tenor.com/5TgGNNYp9dkAAAAM/cat-kiss.gif"
-                  alt="Cat kiss"
-                  className="w-40 h-auto mb-4"
+                <div
+                  className="w-40 h-40 mb-4"
+                  dangerouslySetInnerHTML={{
+                    __html: `<div class="tenor-gif-embed" data-postid="11816971814746635421" data-share-method="host" data-aspect-ratio="1" data-width="100%"><a href="https://tenor.com/view/kiss-gif-11816971814746635421">Kiss GIF</a>from <a href="https://tenor.com/search/kiss-gifs">Kiss GIFs</a></div>`,
+                  }}
                 />
                 <p className="text-foreground text-xl font-bold text-center">
                   Su gimtadieniu!
