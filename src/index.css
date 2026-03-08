@@ -2,42 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
 
 @layer base {
   :root {
-    --background: 330 50% 95%;
-    --foreground: 330 30% 20%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 330 30% 20%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 330 30% 20%;
-
-    --primary: 340 80% 60%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 280 60% 70%;
-    --secondary-foreground: 0 0% 100%;
-
-    --muted: 330 30% 90%;
-    --muted-foreground: 330 20% 50%;
-
-    --accent: 45 90% 65%;
-    --accent-foreground: 330 30% 20%;
-
+    --background: 0 0% 0%;
+    --foreground: 120 100% 50%;
+    --card: 0 0% 5%;
+    --card-foreground: 120 100% 50%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 120 100% 50%;
+    --primary: 120 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 60 100% 50%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 120 60% 40%;
+    --accent: 60 100% 50%;
+    --accent-foreground: 0 0% 0%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-
-    --border: 330 30% 85%;
-    --input: 330 30% 85%;
-    --ring: 340 80% 60%;
-
-    --radius: 1rem;
-
-    --font-display: 'Pacifico', cursive;
-    --font-body: 'Poppins', sans-serif;
+    --border: 120 100% 25%;
+    --input: 120 100% 25%;
+    --ring: 120 100% 50%;
+    --radius: 0px;
+    --font-mono: 'Courier Prime', monospace;
   }
 }
 
@@ -45,74 +34,23 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-body);
+    font-family: var(--font-mono);
   }
 }
 
-@layer components {
-  .birthday-title {
-    font-family: var(--font-display);
-    @apply text-5xl md:text-7xl text-primary;
-    text-shadow: 3px 3px 6px hsl(340 80% 60% / 0.3);
-  }
+.cursor-blink::after {
+  content: "█";
+  animation: blink-cursor 1s step-end infinite;
+  color: hsl(120 100% 50%);
 }
 
-@keyframes envelope-open {
-  0% {
-    transform: rotateX(0deg);
-  }
-  100% {
-    transform: rotateX(180deg);
-  }
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
-@keyframes letter-rise {
-  0% {
-    transform: translateY(0);
-    opacity: 0;
-  }
-  100% {
-    transform: translateY(-120px);
-    opacity: 1;
-  }
-}
-
-@keyframes fade-in-up {
-  0% {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes bounce-gentle {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.animate-envelope-open {
-  animation: envelope-open 1.5s ease-out forwards;
-  transform-origin: top center;
-}
-
-.animate-letter-rise {
-  animation: letter-rise 1.5s ease-out 1s forwards;
-}
-
-.animate-fade-in-up {
-  animation: fade-in-up 1s ease-out forwards;
-}
-
-.animate-bounce-gentle {
-  animation: bounce-gentle 2s ease-in-out infinite;
+.ascii-border {
+  border: 2px solid hsl(120 100% 50%);
 }
