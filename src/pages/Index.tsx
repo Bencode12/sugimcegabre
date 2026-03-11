@@ -170,7 +170,7 @@ const Index = () => {
                   }}
                 />
                 <p className="text-foreground text-xl font-bold text-center">
-                  Su gimtadieniu!
+                  Sveikinu!
                 </p>
               </>
             )}
